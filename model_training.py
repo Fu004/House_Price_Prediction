@@ -1,10 +1,3 @@
-# =============================================================================
-# model_training.py
-# Phần 1: Tiền xử lý dữ liệu và Huấn luyện mô hình
-# Dataset: Ames Housing Dataset
-# Tác giả: Nhóm sinh viên - Đồ án Môn Học
-# =============================================================================
-
 import pandas as pd
 import numpy as np
 import joblib
@@ -19,10 +12,7 @@ from xgboost import XGBRegressor
 
 warnings.filterwarnings("ignore")
 
-# =============================================================================
 # CÁC THAM SỐ CẤU HÌNH CHUNG
-# =============================================================================
-
 DATA_PATH = "data/AmesHousing.csv"   # Đường dẫn đến file dữ liệu
 MODEL_DIR = "models"                   # Thư mục lưu model
 RANDOM_STATE = 42                      # Seed để tái lập kết quả
@@ -57,11 +47,41 @@ CATEGORICAL_FEATURES = [
 
 TARGET = "SalePrice"    # Biến mục tiêu: Giá bán nhà (USD)
 
+# MAPPING KHOẢNG PHỐ TỪ MÃ VIẾT TẮT ĐẾN TÊN ĐẦY ĐỦ
+NEIGHBORHOOD_MAP = {
+    "Blmngtn": "Bloomington Heights",
+    "Blueste": "Bluestem",
+    "BrDale": "Briardale",
+    "BrkSide": "Brookside",
+    "ClearCr": "Clear Creek",
+    "CollgCr": "College Creek",
+    "Crawfor": "Crawford",
+    "Edwards": "Edwards",
+    "Gilbert": "Gilbert",
+    "IDOTRR": "Iowa DOT and Rail Road",
+    "Greens": "Greenshire",
+    "GrnHill": "Green Hills",
+    "Landmrk": "Landmark",
+    "MeadowV": "Meadow Village",
+    "Mitchel": "Mitchell",
+    "Names": "North Ames",
+    "NAmes": "North Ames",
+    "NoRidge": "Northridge",
+    "NPkVill": "Northpark Villa",
+    "NridgHt": "Northridge Heights",
+    "NWAmes": "Northwest Ames",
+    "OldTown": "Old Town",
+    "SWISU": "South & West of Iowa State University",
+    "Sawyer": "Sawyer",
+    "SawyerW": "Sawyer West",
+    "Somerst": "Somerset",
+    "StoneBr": "Stone Brook",
+    "Timber": "Timberland",
+    "Veenker": "Veenker"
+}
 
-# =============================================================================
+
 # BƯỚC 1: ĐỌC VÀ KHÁM PHÁ DỮ LIỆU (EDA NHANH)
-# =============================================================================
-
 def load_and_explore(path: str) -> pd.DataFrame:
     """
     Đọc file CSV và in thông tin cơ bản về dataset.
@@ -76,6 +96,10 @@ def load_and_explore(path: str) -> pd.DataFrame:
     print("=" * 60)
 
     df = pd.read_csv(path)
+    
+    # Thay thế mã viết tắt khoảng phố bằng tên đầy đủ
+    df["Neighborhood"] = df["Neighborhood"].map(NEIGHBORHOOD_MAP)
+    
     print(f"  Số dòng: {df.shape[0]:,} | Số cột: {df.shape[1]}")
     print(f"  Biến mục tiêu '{TARGET}': min={df[TARGET].min():,} | max={df[TARGET].max():,} | mean={df[TARGET].mean():,.0f}")
 
@@ -91,24 +115,8 @@ def load_and_explore(path: str) -> pd.DataFrame:
 
     return df
 
-
-# =============================================================================
 # BƯỚC 2: TIỀN XỬ LÝ DỮ LIỆU
-# =============================================================================
-
 def preprocess(df: pd.DataFrame):
-    """
-    Thực hiện tiền xử lý dữ liệu:
-      - Chọn các cột đặc trưng (feature selection thủ công)
-      - Xử lý missing values
-      - Mã hóa biến phân loại bằng Label Encoding
-      - Chuẩn hóa biến số bằng StandardScaler
-
-    Args:
-        df: DataFrame gốc.
-    Returns:
-        X_train_scaled, X_test_scaled, y_train, y_test, scaler, label_encoders, feature_names
-    """
     print("\n" + "=" * 60)
     print("BƯỚC 2: TIỀN XỬ LÝ DỮ LIỆU")
     print("=" * 60)
@@ -262,21 +270,8 @@ def evaluate_models(trained_models: dict, X_test, y_test):
 
     return results
 
-
-# =============================================================================
 # BƯỚC 5: LƯU MÔ HÌNH VÀ CÁC TIỀN XỬ LÝ
-# =============================================================================
-
 def save_artifacts(trained_models: dict, scaler, label_encoders: dict, feature_names: list):
-    """
-    Lưu tất cả model và tiền xử lý vào thư mục 'models/' dưới dạng file .pkl.
-
-    Args:
-        trained_models: Dict các mô hình đã huấn luyện.
-        scaler: StandardScaler đã fit.
-        label_encoders: Dict các LabelEncoder theo từng cột.
-        feature_names: Danh sách tên cột đặc trưng theo đúng thứ tự.
-    """
     print("\n" + "=" * 60)
     print("BƯỚC 5: LƯU MÔ HÌNH VÀ TIỀN XỬ LÝ")
     print("=" * 60)
@@ -315,10 +310,7 @@ def save_artifacts(trained_models: dict, scaler, label_encoders: dict, feature_n
     print("\n  Hoàn tất! Tất cả artifacts đã được lưu.")
 
 
-# =============================================================================
 # CHẠY TOÀN BỘ PIPELINE
-# =============================================================================
-
 if __name__ == "__main__":
     # Bước 1: Đọc dữ liệu
     df = load_and_explore(DATA_PATH)

@@ -1,37 +1,58 @@
-# =============================================================================
-# app.py
-# Phần 2: Giao diện Web Dự báo Giá Nhà - Ames Housing Dataset
-# Thư viện: Streamlit
-# Tác giả: Nhóm sinh viên - Đồ án Môn Học
-# Chạy: streamlit run app.py
-# =============================================================================
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 import os
 
-# =============================================================================
-# CẤU HÌNH TRANG VÀ ĐƯỜNG DẪN
-# =============================================================================
 
+# CẤU HÌNH TRANG VÀ ĐƯỜNG DẪN
 st.set_page_config(
-    page_title="🏠 Dự Báo Giá Nhà - Ames Housing",
-    page_icon="🏠",
+    page_title="House Price Prediction - Ames Housing",
+    page_icon="",
     layout="wide",
 )
 
 MODEL_DIR = "models"
 
-# Ánh xạ tên mô hình hiển thị -> tên file .pkl
 MODEL_FILES = {
-    "Linear Regression (Hồi quy tuyến tính)": "linear_regression.pkl",
-    "Random Forest (Rừng ngẫu nhiên)":         "random_forest.pkl",
+    "Linear Regression (Linear Regression)": "linear_regression.pkl",
+    "Random Forest (Random Forest)":         "random_forest.pkl",
     "XGBoost (Gradient Boosting)":              "xgboost.pkl",
 }
 
-# Các cột đặc trưng (phải khớp với model_training.py)
+# MAPPING KHOẢNG PHỐ TỪ MÃ VIẾT TẮT ĐẾN TÊN ĐẦY ĐỦ
+NEIGHBORHOOD_MAP = {
+    "Blmngtn": "Bloomington Heights",
+    "Blueste": "Bluestem",
+    "BrDale": "Briardale",
+    "BrkSide": "Brookside",
+    "ClearCr": "Clear Creek",
+    "CollgCr": "College Creek",
+    "Crawfor": "Crawford",
+    "Edwards": "Edwards",
+    "Gilbert": "Gilbert",
+    "IDOTRR": "Iowa DOT and Rail Road",
+    "Greens": "Greenshire",
+    "GrnHill": "Green Hills",
+    "Landmrk": "Landmark",
+    "MeadowV": "Meadow Village",
+    "Mitchel": "Mitchell",
+    "Names": "North Ames",
+    "NAmes": "North Ames",
+    "NoRidge": "Northridge",
+    "NPkVill": "Northpark Villa",
+    "NridgHt": "Northridge Heights",
+    "NWAmes": "Northwest Ames",
+    "OldTown": "Old Town",
+    "SWISU": "South & West of Iowa State University",
+    "Sawyer": "Sawyer",
+    "SawyerW": "Sawyer West",
+    "Somerst": "Somerset",
+    "StoneBr": "Stone Brook",
+    "Timber": "Timberland",
+    "Veenker": "Veenker"
+}
+
 NUMERIC_FEATURES = [
     "Gr Liv Area", "Total Bsmt SF", "1st Flr SF", "Garage Area",
     "Lot Area", "Year Built", "Year Remod/Add", "Overall Qual",
@@ -43,11 +64,39 @@ CATEGORICAL_FEATURES = [
     "Kitchen Qual", "Exter Qual",
 ]
 
+HOUSE_STYLE_DISPLAY = {
+    "1Story": "1 Story",
+    "1.5Fin": "1.5 Story Finished",
+    "1.5Unf": "1.5 Story Unfinished",
+    "2Story": "2 Story",
+    "2.5Fin": "2.5 Story Finished",
+    "2.5Unf": "2.5 Story Unfinished",
+    "SFoyer": "Split Foyer",
+    "SLvl": "Split Level",
+}
 
-# =============================================================================
-# HÀM TẢI ARTIFACTS (CÓ CACHE ĐỂ TRÁNH TẢI LẠI MỖI LẦN TƯƠNG TÁC)
-# =============================================================================
+BLDG_TYPE_DISPLAY = {
+    "1Fam": "Single-family Detached",
+    "2fmCon": "Two-family Conversion",
+    "Duplx": "Duplex",
+    "TwnhsE": "Townhouse End Unit",
+    "Twnhs": "Townhouse Inside Unit",
+}
 
+CENTRAL_AIR_DISPLAY = {
+    "Y": "Yes",
+    "N": "No",
+}
+
+QUALITY_DISPLAY = {
+    "Ex": "Excellent",
+    "Gd": "Good",
+    "TA": "Average/Typical",
+    "Fa": "Fair",
+    "Po": "Poor",
+}
+
+# HÀM TẢI ARTIFACTS 
 @st.cache_resource
 def load_artifacts():
     """
@@ -63,7 +112,7 @@ def load_artifacts():
     for f in required_files:
         if not os.path.exists(os.path.join(MODEL_DIR, f)):
             raise FileNotFoundError(
-                f"Không tìm thấy '{f}'. Vui lòng chạy 'python model_training.py' trước!"
+                f"File '{f}' not found. Please run 'python model_training.py' first!"
             )
 
     scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
@@ -88,14 +137,23 @@ def load_model(model_filename: str):
     path = os.path.join(MODEL_DIR, model_filename)
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"Không tìm thấy mô hình '{path}'. Vui lòng chạy 'python model_training.py' trước!"
+            f"Model '{path}' not found. Please run 'python model_training.py' first!"
         )
     return joblib.load(path)
 
+def get_display_value(code: str, display_map: dict) -> str:
+    return display_map.get(code, code)
 
-# =============================================================================
-# HÀM TIỀN XỬ LÝ ĐẦU VÀO CỦA NGƯỜI DÙNG
-# =============================================================================
+
+def selectbox_with_display(label: str, values: list, display_map: dict, default: str = None):
+    options = [display_map.get(value, value) for value in values]
+    if default is not None and default in values:
+        default_index = values.index(default)
+    else:
+        default_index = 0
+    selected_label = st.selectbox(label, options=options, index=default_index)
+    selected_code = values[options.index(selected_label)]
+    return selected_code, selected_label
 
 def preprocess_input(user_input: dict, scaler, label_encoders, feature_names) -> pd.DataFrame:
     """
@@ -110,160 +168,153 @@ def preprocess_input(user_input: dict, scaler, label_encoders, feature_names) ->
     Returns:
         DataFrame 1 dòng đã được mã hóa và chuẩn hóa, sẵn sàng để dự báo.
     """
-    # Tạo DataFrame 1 dòng từ dữ liệu người dùng
     df_input = pd.DataFrame([user_input])
 
-    # Mã hóa các biến phân loại bằng LabelEncoder đã lưu
+
     for col in CATEGORICAL_FEATURES:
         le = label_encoders[col]
         val = str(df_input[col].iloc[0])
-        # Xử lý trường hợp giá trị mới không có trong tập huấn luyện
+
         if val not in le.classes_:
-            val = le.classes_[0]  # Dùng giá trị đầu tiên làm fallback
+            val = le.classes_[0]  # Use first class as fallback
         df_input[col] = le.transform([val])
 
-    # Đảm bảo đúng thứ tự cột
+
     df_input = df_input[feature_names]
 
-    # Chuẩn hóa các biến số
     df_input[NUMERIC_FEATURES] = scaler.transform(df_input[NUMERIC_FEATURES])
 
     return df_input
 
 
-# =============================================================================
-# GIAO DIỆN CHÍNH
-# =============================================================================
 
+# GIAO DIỆN CHÍNH
 def main():
-    # --- Tiêu đề trang ---
-    st.title("🏠 Hệ Thống Dự Báo Giá Nhà")
-    st.markdown("**Dataset: Ames Housing** | Môn học: Machine Learning | Nhóm sinh viên")
+
+    st.title("House Price Prediction System")
+    st.markdown("**Dataset: Ames Housing** | Course: Machine Learning | Student Group")
     st.markdown("---")
 
-    # --- Tải artifacts (scaler, encoder, v.v.) ---
+
     try:
         scaler, label_encoders, feature_names, cat_options = load_artifacts()
     except FileNotFoundError as e:
-        st.error(f"⚠️ {e}")
-        st.info("👉 Mở terminal và chạy: `python model_training.py`")
+        st.error(f"{e}")
+        st.info("Open terminal and run: `python model_training.py`")
         st.stop()
 
-    # =========================================================================
-    # SIDEBAR: Chọn mô hình và nhập thông số nhà
-    # =========================================================================
     with st.sidebar:
-        st.header("⚙️ Cài đặt & Nhập liệu")
+        st.header("Settings & Input")
         st.markdown("---")
 
-        # --- Chọn mô hình ---
-        st.subheader("1️⃣ Chọn mô hình dự báo")
+        st.subheader("1️⃣ Choose Prediction Model")
         selected_model_name = st.selectbox(
-            "Mô hình:",
+            "Model:",
             options=list(MODEL_FILES.keys()),
-            help="Chọn thuật toán Machine Learning để dự báo giá nhà."
+            help="Select the Machine Learning algorithm to predict house prices."
         )
 
         st.markdown("---")
 
-        # --- Nhập thông số nhà ---
-        st.subheader("2️⃣ Thông số ngôi nhà")
+        st.subheader("2️⃣ House Specifications")
 
-        # == Phần Diện tích & Kết cấu ==
-        st.markdown("**📐 Diện tích & Kết cấu**")
+        st.markdown("**Area & Structure**")
         gr_liv_area = st.number_input(
-            "Diện tích sống (sq ft)", min_value=300, max_value=6000,
+            "Living Area (sq ft)", min_value=300, max_value=6000,
             value=1500, step=50,
-            help="Tổng diện tích sống trên mặt đất (không tính tầng hầm)"
+            help="Total above grade (ground) living area square feet"
         )
         total_bsmt_sf = st.number_input(
-            "Diện tích tầng hầm (sq ft)", min_value=0, max_value=3000,
+            "Basement Area (sq ft)", min_value=0, max_value=3000,
             value=800, step=50
         )
         first_flr_sf = st.number_input(
-            "Diện tích tầng 1 (sq ft)", min_value=300, max_value=4000,
+            "First Floor Area (sq ft)", min_value=300, max_value=4000,
             value=1000, step=50
         )
         lot_area = st.number_input(
-            "Diện tích lô đất (sq ft)", min_value=1000, max_value=100000,
+            "Lot Area (sq ft)", min_value=1000, max_value=100000,
             value=10000, step=500
         )
         garage_area = st.number_input(
-            "Diện tích Garage (sq ft)", min_value=0, max_value=1500,
+            "Garage Area (sq ft)", min_value=0, max_value=1500,
             value=400, step=50
         )
 
-        st.markdown("**🛏️ Phòng & Tiện nghi**")
-        bedroom = st.slider("Số phòng ngủ", min_value=0, max_value=8, value=3)
-        full_bath = st.slider("Số phòng tắm đầy đủ", min_value=0, max_value=4, value=2)
-        tot_rms = st.slider("Tổng số phòng (không tính phòng tắm)", min_value=2, max_value=14, value=7)
-        fireplaces = st.slider("Số lò sưởi", min_value=0, max_value=4, value=1)
-        garage_cars = st.slider("Sức chứa Garage (số xe)", min_value=0, max_value=4, value=2)
+        st.markdown("**🛏️ Rooms & Amenities**")
+        bedroom = st.slider("Bedrooms", min_value=0, max_value=8, value=3)
+        full_bath = st.slider("Full Bathrooms", min_value=0, max_value=4, value=2)
+        tot_rms = st.slider("Total Rooms (excluding bathrooms)", min_value=2, max_value=14, value=7)
+        fireplaces = st.slider("Fireplaces", min_value=0, max_value=4, value=1)
+        garage_cars = st.slider("Garage Capacity (cars)", min_value=0, max_value=4, value=2)
 
-        st.markdown("**📅 Thời gian**")
-        year_built = st.number_input("Năm xây dựng", min_value=1872, max_value=2010, value=1980, step=1)
-        year_remod = st.number_input("Năm cải tạo gần nhất", min_value=1950, max_value=2010, value=2000, step=1)
+        st.markdown("**Time**")
+        year_built = st.number_input("Year Built", min_value=1872, max_value=2010, value=1980, step=1)
+        year_remod = st.number_input("Year Remodeled", min_value=1950, max_value=2010, value=2000, step=1)
 
-        st.markdown("**⭐ Đánh giá chất lượng**")
+        st.markdown("**Quality Ratings**")
         overall_qual = st.slider(
-            "Chất lượng tổng thể (1=Rất kém, 10=Xuất sắc)",
+            "Overall Quality (1=Very Poor, 10=Very Excellent)",
             min_value=1, max_value=10, value=6
         )
         overall_cond = st.slider(
-            "Tình trạng tổng thể (1=Rất kém, 10=Xuất sắc)",
+            "Overall Condition (1=Very Poor, 10=Very Excellent)",
             min_value=1, max_value=10, value=5
         )
 
-        st.markdown("**📍 Vị trí & Loại nhà**")
+        st.markdown("**Location & House Type**")
         neighborhood = st.selectbox(
-            "Khu vực (Neighborhood)",
+            "Neighborhood",
             options=cat_options.get("Neighborhood", ["NAmes"]),
         )
-        house_style = st.selectbox(
-            "Kiểu nhà (House Style)",
-            options=cat_options.get("House Style", ["1Story"]),
+        house_style, house_style_label = selectbox_with_display(
+            "House Style",
+            cat_options.get("House Style", ["1Story"]),
+            HOUSE_STYLE_DISPLAY,
+            default="1Story"
         )
-        bldg_type = st.selectbox(
-            "Loại tòa nhà (Building Type)",
-            options=cat_options.get("Bldg Type", ["1Fam"]),
+        bldg_type, bldg_type_label = selectbox_with_display(
+            "Building Type",
+            cat_options.get("Bldg Type", ["1Fam"]),
+            BLDG_TYPE_DISPLAY,
+            default="1Fam"
         )
-        central_air = st.selectbox(
-            "Điều hòa trung tâm",
-            options=cat_options.get("Central Air", ["Y", "N"]),
+        central_air, central_air_label = selectbox_with_display(
+            "Central Air Conditioning",
+            cat_options.get("Central Air", ["Y", "N"]),
+            CENTRAL_AIR_DISPLAY,
+            default="Y"
         )
-        kitchen_qual = st.selectbox(
-            "Chất lượng bếp (Ex=Xuất sắc, Gd=Tốt, TA=Trung bình, Fa=Kém)",
-            options=cat_options.get("Kitchen Qual", ["TA"]),
+        kitchen_qual, kitchen_qual_label = selectbox_with_display(
+            "Kitchen Quality",
+            cat_options.get("Kitchen Qual", ["TA"]),
+            QUALITY_DISPLAY,
+            default="TA"
         )
-        exter_qual = st.selectbox(
-            "Chất lượng ngoại thất",
-            options=cat_options.get("Exter Qual", ["TA"]),
+        exter_qual, exter_qual_label = selectbox_with_display(
+            "Exterior Quality",
+            cat_options.get("Exter Qual", ["TA"]),
+            QUALITY_DISPLAY,
+            default="TA"
         )
 
         st.markdown("---")
-        # Nút dự báo
-        predict_button = st.button("🔮 Dự Báo Giá Nhà", type="primary", use_container_width=True)
-
-    # =========================================================================
-    # KHU VỰC NỘI DUNG CHÍNH: Hiển thị kết quả
-    # =========================================================================
+        # Prediction button
+        predict_button = st.button("Predict House Price", type="primary", use_container_width=True)
 
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.subheader("📊 Kết quả dự báo")
+        st.subheader("Prediction Results")
 
         if not predict_button:
-            st.info("👈 Nhập thông số ngôi nhà ở thanh bên trái và nhấn **Dự Báo Giá Nhà**.")
+            st.info("Enter the house specifications in the left sidebar and click **Predict House Price**.")
         else:
-            # --- Tải mô hình được chọn ---
             try:
                 model = load_model(MODEL_FILES[selected_model_name])
             except FileNotFoundError as e:
-                st.error(f"⚠️ {e}")
+                st.error(f"{e}")
                 st.stop()
-
-            # --- Tổng hợp dữ liệu nhập của người dùng ---
             user_input = {
                 "Gr Liv Area":    gr_liv_area,
                 "Total Bsmt SF":  total_bsmt_sf,
@@ -287,92 +338,53 @@ def main():
                 "Exter Qual":     exter_qual,
             }
 
-            # --- Kiểm tra dữ liệu hợp lệ ---
             if year_remod < year_built:
-                st.warning("⚠️ Năm cải tạo không thể nhỏ hơn năm xây dựng! Vui lòng kiểm tra lại.")
+                st.warning("Remodel year cannot be earlier than build year! Please check again.")
                 st.stop()
 
-            # --- Tiền xử lý và dự báo ---
             try:
                 X_pred = preprocess_input(user_input, scaler, label_encoders, feature_names)
                 predicted_price = model.predict(X_pred)[0]
-                predicted_price = max(0, predicted_price)  # Giá không thể âm
+                predicted_price = max(0, predicted_price)  # Price cannot be negative
             except Exception as e:
-                st.error(f"❌ Lỗi khi dự báo: {e}")
+                st.error(f"Error during prediction: {e}")
                 st.stop()
 
-            # --- Hiển thị kết quả ---
-            st.success("✅ Dự báo thành công!")
+            st.success("Prediction successful!")
 
-            # Giá bằng USD
+
             st.metric(
-                label=f"💰 Giá nhà dự báo ({selected_model_name.split('(')[0].strip()})",
+                label=f"Predicted House Price ({selected_model_name.split('(')[0].strip()})",
                 value=f"${predicted_price:,.0f} USD",
             )
 
-            # Khoảng dự báo ước tính (+/- 10% để tham khảo)
             lower = predicted_price * 0.90
             upper = predicted_price * 1.10
             st.markdown(
-                f"📏 **Khoảng ước tính (±10%):** `${lower:,.0f}` — `${upper:,.0f}` USD"
+                f"**Estimated Range (±10%):** `${lower:,.0f}` — `${upper:,.0f}` USD"
             )
 
             st.markdown("---")
 
-            # Bảng tóm tắt thông số đã nhập
-            st.markdown("**📋 Thông số đã nhập:**")
+            # Summary table of entered specifications
+            st.markdown("**Entered Specifications:**")
             summary_data = {
-                "Thông số": [
-                    "Diện tích sống", "Diện tích tầng hầm", "Diện tích tầng 1",
-                    "Diện tích lô đất", "Diện tích Garage", "Số phòng ngủ",
-                    "Số phòng tắm", "Chất lượng tổng thể", "Năm xây dựng",
-                    "Khu vực", "Kiểu nhà", "Điều hòa trung tâm"
+                "Specification": [
+                    "Living Area", "Basement Area", "First Floor Area",
+                    "Lot Area", "Garage Area", "Bedrooms",
+                    "Full Bathrooms", "Overall Quality", "Year Built",
+                    "Neighborhood", "House Style", "Building Type", "Central Air",
+                    "Kitchen Quality", "Exterior Quality"
                 ],
-                "Giá trị": [
+                "Value": [
                     f"{gr_liv_area:,} sq ft", f"{total_bsmt_sf:,} sq ft", f"{first_flr_sf:,} sq ft",
-                    f"{lot_area:,} sq ft", f"{garage_area:,} sq ft", f"{bedroom} phòng",
-                    f"{full_bath} phòng", f"{overall_qual}/10", str(year_built),
-                    neighborhood, house_style, central_air
+                    f"{lot_area:,} sq ft", f"{garage_area:,} sq ft", f"{bedroom} rooms",
+                    f"{full_bath} rooms", f"{overall_qual}/10", str(year_built),
+                    neighborhood, house_style_label, bldg_type_label, central_air_label,
+                    kitchen_qual_label, exter_qual_label
                 ]
             }
             st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
-
-    with col2:
-        st.subheader("ℹ️ Về các mô hình")
-
-        model_info = {
-            "Linear Regression (Hồi quy tuyến tính)": {
-                "icon": "📈",
-                "desc": "Mô hình cơ bản nhất. Giả định quan hệ tuyến tính giữa đặc trưng và giá. Nhanh, dễ giải thích nhưng độ chính xác thấp hơn.",
-                "pros": "Nhanh, minh bạch",
-                "cons": "Không nắm bắt phi tuyến"
-            },
-            "Random Forest (Rừng ngẫu nhiên)": {
-                "icon": "🌲",
-                "desc": "Kết hợp nhiều cây quyết định (ensemble). Xử lý tốt dữ liệu phi tuyến và ít bị overfitting.",
-                "pros": "Chính xác, ổn định",
-                "cons": "Chậm hơn, khó giải thích"
-            },
-            "XGBoost (Gradient Boosting)": {
-                "icon": "⚡",
-                "desc": "Thuật toán boosting mạnh nhất hiện nay. Xây cây tuần tự, mỗi cây sửa lỗi cây trước. Thường đạt kết quả tốt nhất.",
-                "pros": "Rất chính xác",
-                "cons": "Cần chỉnh nhiều tham số"
-            },
-        }
-
-        for name, info in model_info.items():
-            is_selected = name == selected_model_name
-            border_color = "#4CAF50" if is_selected else "#e0e0e0"
-            with st.container(border=True):
-                st.markdown(f"**{info['icon']} {name.split('(')[0].strip()}**" + (" ✅" if is_selected else ""))
-                st.caption(info["desc"])
-                st.markdown(f"✔️ *{info['pros']}* &nbsp;&nbsp; ✖️ *{info['cons']}*")
-
-
-# =============================================================================
-# ĐIỂM CHẠY CHƯƠNG TRÌNH
-# =============================================================================
 
 if __name__ == "__main__":
     main()
