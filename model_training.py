@@ -83,14 +83,6 @@ NEIGHBORHOOD_MAP = {
 
 # BƯỚC 1: ĐỌC VÀ KHÁM PHÁ DỮ LIỆU (EDA NHANH)
 def load_and_explore(path: str) -> pd.DataFrame:
-    """
-    Đọc file CSV và in thông tin cơ bản về dataset.
-    
-    Args:
-        path: Đường dẫn đến file CSV.
-    Returns:
-        DataFrame gốc chưa qua xử lý.
-    """
     print("=" * 60)
     print("BƯỚC 1: ĐỌC DỮ LIỆU")
     print("=" * 60)
@@ -186,15 +178,6 @@ def preprocess(df: pd.DataFrame):
 # =============================================================================
 
 def train_models(X_train, y_train) -> dict:
-    """
-    Huấn luyện 3 mô hình: Linear Regression, Random Forest, XGBoost.
-
-    Args:
-        X_train: Tập đặc trưng huấn luyện đã qua tiền xử lý.
-        y_train: Nhãn (giá nhà) của tập huấn luyện.
-    Returns:
-        Dictionary chứa các mô hình đã huấn luyện.
-    """
     print("\n" + "=" * 60)
     print("BƯỚC 3: HUẤN LUYỆN MÔ HÌNH")
     print("=" * 60)
@@ -238,22 +221,19 @@ def train_models(X_train, y_train) -> dict:
 # BƯỚC 4: ĐÁNH GIÁ MÔ HÌNH
 # =============================================================================
 
-def evaluate_models(trained_models: dict, X_test, y_test):
-    """
-    Đánh giá các mô hình trên tập test bằng MAE, RMSE, R².
+def evaluate_models(trained_models: dict, X_train, y_train, X_test, y_test, feature_names):
+    import matplotlib.pyplot as plt
+    from sklearn.model_selection import cross_val_score
 
-    Args:
-        trained_models: Dict các mô hình đã huấn luyện.
-        X_test: Tập test đặc trưng.
-        y_test: Nhãn thực tế của tập test.
-    """
-    print("\n" + "=" * 60)
-    print("BƯỚC 4: ĐÁNH GIÁ MÔ HÌNH TRÊN TẬP TEST")
-    print("=" * 60)
-    print(f"  {'Mô hình':<22} {'MAE':>12} {'RMSE':>12} {'R²':>8}")
-    print("  " + "-" * 58)
+    print("\n" + "=" * 70)
+    print("ĐÁNH GIÁ MÔ HÌNH (FULL VERSION)")
+    print("=" * 70)
 
     results = {}
+
+    print(f"{'Model':<20} {'MAE':>12} {'RMSE':>12} {'R2':>8} {'MAPE(%)':>10}")
+    print("-" * 70)
+
     for name, model in trained_models.items():
         y_pred = model.predict(X_test)
 
@@ -261,12 +241,91 @@ def evaluate_models(trained_models: dict, X_test, y_test):
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
         r2 = r2_score(y_test, y_pred)
 
-        results[name] = {"MAE": mae, "RMSE": rmse, "R2": r2}
-        print(f"  {name:<22} ${mae:>10,.0f} ${rmse:>10,.0f} {r2:>7.4f}")
+        # MAPE
+        mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
 
-    # Xác định mô hình tốt nhất dựa trên R²
+        results[name] = {
+            "MAE": mae,
+            "RMSE": rmse,
+            "R2": r2,
+            "MAPE": mape
+        }
+
+        print(f"{name:<20} ${mae:>10,.0f} ${rmse:>10,.0f} {r2:>7.4f} {mape:>9.2f}%")
+
+    # =============================
+    # 1. CHỌN MODEL TỐT NHẤT
+    # =============================
     best_name = max(results, key=lambda k: results[k]["R2"])
-    print(f"\n  => Mô hình tốt nhất (R²): {best_name} (R² = {results[best_name]['R2']:.4f})")
+    best_model = trained_models[best_name]
+
+    print("\n" + "-" * 70)
+    print(f"Best model: {best_name} (R2 = {results[best_name]['R2']:.4f})")
+
+    # =============================
+    # 2. CROSS VALIDATION
+    # =============================
+    print("\nCROSS-VALIDATION (5-FOLD):")
+    for name, model in trained_models.items():
+        scores = cross_val_score(model, X_train, y_train, cv=5, scoring='r2')
+        print(f"{name:<20} Mean R2 = {scores.mean():.4f} | Std = {scores.std():.4f}")
+
+    # =============================
+    # 3. BIỂU ĐỒ SO SÁNH R2
+    # =============================
+    plt.figure()
+    names = list(results.keys())
+    r2_scores = [results[m]["R2"] for m in names]
+
+    plt.bar(names, r2_scores)
+    plt.title("Model Comparison (R2)")
+    plt.ylabel("R2 Score")
+    plt.xticks(rotation=20)
+    plt.show()
+
+    # =============================
+    # 4. ACTUAL vs PREDICTED (MODEL TỐT NHẤT)
+    # =============================
+    y_pred_best = best_model.predict(X_test)
+
+    plt.figure()
+    plt.scatter(y_test, y_pred_best)
+    plt.xlabel("Actual Price")
+    plt.ylabel("Predicted Price")
+    plt.title(f"{best_name} - Actual vs Predicted")
+
+    plt.plot([y_test.min(), y_test.max()],
+             [y_test.min(), y_test.max()],
+             linestyle='--')
+
+    plt.show()
+
+    # =============================
+    # 5. ERROR DISTRIBUTION
+    # =============================
+    errors = y_test - y_pred_best
+
+    plt.figure()
+    plt.hist(errors, bins=50)
+    plt.title(f"{best_name} - Error Distribution")
+    plt.xlabel("Error")
+    plt.ylabel("Frequency")
+    plt.show()
+
+    # =============================
+    # 6. FEATURE IMPORTANCE
+    # =============================
+    if hasattr(best_model, "feature_importances_"):
+        importances = best_model.feature_importances_
+        indices = np.argsort(importances)[::-1][:10]
+
+        plt.figure()
+        plt.bar(range(len(indices)), importances[indices])
+        plt.xticks(range(len(indices)),
+                   [feature_names[i] for i in indices],
+                   rotation=45)
+        plt.title(f"{best_name} - Top 10 Important Features")
+        plt.show()
 
     return results
 
@@ -322,7 +381,7 @@ if __name__ == "__main__":
     trained_models = train_models(X_train, y_train)
 
     # Bước 4: Đánh giá
-    evaluate_models(trained_models, X_test, y_test)
+    evaluate_models(trained_models, X_train, y_train, X_test, y_test, feature_names)
 
     # Bước 5: Lưu
     save_artifacts(trained_models, scaler, label_encoders, feature_names)

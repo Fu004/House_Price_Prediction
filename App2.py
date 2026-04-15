@@ -4,247 +4,151 @@ import numpy as np
 import joblib
 import os
 import plotly.graph_objects as go
-import plotly.express as px
 
-# ──────────────────────────────────────────────
-# Giao diện thử nghiệm
-# ──────────────────────────────────────────────
-
-# ──────────────────────────────────────────────
-# CẤU HÌNH TRANG
-# ──────────────────────────────────────────────
 st.set_page_config(
-    page_title="🏠 House Price Predictor",
+    page_title="House Price Predictor · Ames Housing",
     page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ──────────────────────────────────────────────
-# CUSTOM CSS – Colorful & Friendly Theme
-# ──────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* ── Root & body ── */
-html, body, [class*="css"] {
-    font-family: 'Nunito', sans-serif;
-    color: #1f2d3d !important;
-}
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+.stApp { background-color: #f5f4f0; }
+#MainMenu, footer, header { visibility: hidden; }
 
-/* ── Background ── */
-.stApp {
-    background: #0a0a0a;
-    color: #e6e6e6;
-}
-
-/* ── Hide Streamlit branding ── */
-#MainMenu, footer { visibility: hidden; }
-
-/* ── Page title banner ── */
-.hero-banner {
-    background: linear-gradient(135deg, #111827, #1f2937, #374151);
-    background-size: 300% 300%;
-    animation: gradientShift 8s ease infinite;
-    border-radius: 24px;
-    padding: 32px 40px;
-    margin-bottom: 28px;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-}
-@keyframes gradientShift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-.hero-banner h1 {
-    color: #ffffff;
-    font-size: 2.4rem;
-    font-weight: 900;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.22);
-    margin: 0 0 8px 0;
-}
-.hero-banner p {
-    color: rgba(255,255,255,0.95);
-    font-size: 1.05rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-/* ── Section cards ── */
-.card {
-    background: #111827;
-    border-radius: 20px;
-    padding: 28px 32px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.55);
-    margin-bottom: 20px;
-    border: 2px solid transparent;
-    transition: border-color 0.3s;
-}
-.card:hover { border-color: #4f76e0; }
-
-/* ── Result price card ── */
-.price-card {
-    background: linear-gradient(135deg, #2b3b59, #3f5481);
-    border-radius: 24px;
-    padding: 32px;
-    text-align: center;
-    color: #ffffff;
-    box-shadow: 0 10px 30px rgba(38, 62, 101, 0.18);
-    margin-bottom: 20px;
-}
-.price-card .label {
-    font-size: 0.95rem;
-    font-weight: 700;
-    opacity: 0.92;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-.price-card .price {
-    font-size: 3rem;
-    font-weight: 900;
-    letter-spacing: -1px;
-    line-height: 1.1;
-}
-.price-card .range {
-    font-size: 0.95rem;
-    opacity: 0.88;
-    margin-top: 10px;
-    font-weight: 600;
-}
-
-/* ── Range badges ── */
-.range-badge {
-    display: inline-block;
-    background: rgba(255,255,255,0.2);
-    border-radius: 30px;
-    padding: 4px 16px;
-    margin: 4px;
-    font-weight: 700;
-}
-
-/* ── Stat pills ── */
-.stat-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin: 16px 0;
-}
-.stat-pill {
-    background: #e8eef6;
-    border-radius: 50px;
-    padding: 8px 20px;
-    font-weight: 700;
-    font-size: 0.88rem;
-    color: #1f2d3d;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.stat-pill.blue  { background: #4f76e0; color: #ffffff; }
-.stat-pill.green { background: #2f9d70; color: #ffffff; }
-.stat-pill.pink  { background: #bd5f7e; color: #ffffff; }
-.stat-pill.purple{ background: #6f5fce; color: #ffffff; }
-
-/* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #020617 0%, #111827 100%) !important;
+    background-color: #ffffff !important;
+    border-right: 1px solid #e8e6e0 !important;
 }
-[data-testid="stSidebar"] * {
-    color: #cad6ea !important;
-}
-[data-testid="stSidebar"] .stText,
-[data-testid="stSidebar"] .stMarkdown,
-[data-testid="stSidebar"] .stSelectbox label,
-[data-testid="stSidebar"] .stSlider label,
-[data-testid="stSidebar"] .stNumberInput label,
-[data-testid="stSidebar"] .stCaption,
-[data-testid="stSidebar"] .stMarkdown p {
-    color: #c1d0e6 !important;
-    font-size: 0.88rem !important;
-    font-weight: 600 !important;
-}
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-    color: #c5d7f4 !important;
-}
-[data-testid="stSidebar"] .sidebar-section-title {
-    color: #b0c4e0 !important;
-    font-weight: 800 !important;
-    font-size: 0.82rem !important;
-    letter-spacing: 1.8px !important;
+[data-testid="stSidebar"] * { color: #000000 !important; }
+[data-testid="stSidebar"] label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #888780 !important;
     text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
 }
-
-/* ── Predict button ── */
 [data-testid="stSidebar"] .stButton > button {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-    color: #ffffff !important;
-    font-weight: 800 !important;
-    font-size: 1rem !important;
+    background-color: #1d6fca !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
     border: none !important;
-    border-radius: 16px !important;
-    padding: 14px !important;
-    box-shadow: 0 4px 18px rgba(37, 99, 235, 0.42) !important;
-    transition: transform 0.2s, box-shadow 0.2s !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    width: 100% !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 24px rgba(20, 43, 93, 0.44) !important;
+    background-color: #1558a8 !important;
 }
 
-/* ── Info / warning / success boxes ── */
-.stAlert { border-radius: 16px !important; }
+.app-header {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-bottom: 16px;
+    border: 1px solid #e8e6e0;
+}
+.app-header h1 { font-size: 20px; font-weight: 700; color: #2c2c2a; margin: 0 0 2px 0; }
+.app-header p  { font-size: 13px; color: #888780; margin: 0; }
 
-/* ── Dataframe ── */
-.stDataFrame { border-radius: 16px; overflow: hidden; }
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.metric-card {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e8e6e0;
+    padding: 18px 20px;
+}
+.metric-card .label {
+    font-size: 12px; font-weight: 500; color: #888780;
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px;
+}
+.metric-card .value { font-size: 26px; font-weight: 700; color: #2c2c2a; line-height: 1.1; letter-spacing: -0.5px; }
+.metric-card .value.blue { color: #1d6fca; }
+.metric-card .sub { font-size: 12px; color: #888780; margin-top: 4px; }
 
-/* ── Section headers inside main area ── */
-.section-header {
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: #1f2d3d;
-    margin: 20px 0 12px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.badge-up   { display:inline-block; background:#eaf3de; color:#3b6d11; border-radius:4px; padding:2px 8px; font-size:11px; font-weight:600; }
+.badge-down { display:inline-block; background:#fcebeb; color:#a32d2d; border-radius:4px; padding:2px 8px; font-size:11px; font-weight:600; }
+
+.chart-card {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e8e6e0;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+}
+.chart-title {
+    font-size: 11px; font-weight: 600; color: #888780;
+    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px;
+}
+
+.corr-row  { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.corr-label{ font-size:12px; color:#2c2c2a; width:110px; flex-shrink:0; }
+.corr-bar-bg  { flex:1; height:6px; background:#f0ede6; border-radius:3px; }
+.corr-bar-fill{ height:6px; border-radius:3px; background:#1d6fca; }
+.corr-val  { font-size:12px; font-weight:600; color:#2c2c2a; width:32px; text-align:right; }
+
+.specs-table { width:100%; border-collapse:collapse; }
+.specs-table tr { border-bottom:1px solid #f0ede6; }
+.specs-table tr:last-child { border-bottom:none; }
+.specs-table td { padding:7px 0; font-size:13px; }
+.specs-table td:first-child { color:#888780; font-weight:500; width:55%; }
+.specs-table td:last-child  { color:#2c2c2a; font-weight:600; text-align:right; }
+
+.stAlert { border-radius:10px !important; }
+
+[data-testid="stSelectbox"] div {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Text trong selectbox */
+[data-testid="stSelectbox"] * {
+    color: #000000 !important;
+}
+
+/* Fix number input */
+[data-testid="stNumberInput"] input {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Nút tăng giảm */
+[data-testid="stNumberInput"] button {
+    background-color: #f0ede6 !important;
+    color: #000000 !important;
+    border: none !important;
+}
+
+/* Hover cho nút */
+[data-testid="stNumberInput"] button:hover {
+    background-color: #e0ddd6 !important;
+}
+
+/* Dropdown menu khi mở */
+div[role="listbox"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ──────────────────────────────────────────────
-# CONSTANTS
-# ──────────────────────────────────────────────
+# ── Constants ─────────────────────────────────────────────────────
 MODEL_DIR = "models"
-
 MODEL_FILES = {
-    "🔵 Linear Regression":   "linear_regression.pkl",
-    "🌲 Random Forest":        "random_forest.pkl",
-    "⚡ XGBoost":              "xgboost.pkl",
+    "Linear Regression": "linear_regression.pkl",
+    "Random Forest":     "random_forest.pkl",
+    "XGBoost":           "xgboost.pkl",
 }
-
-MODEL_DESCRIPTIONS = {
-    "🔵 Linear Regression":  "Đơn giản, nhanh, dễ giải thích.",
-    "🌲 Random Forest":       "Ensemble nhiều cây, ổn định, chính xác cao.",
-    "⚡ XGBoost":             "Gradient boosting mạnh, thường đạt R² tốt nhất.",
-}
-
-NEIGHBORHOOD_MAP = {
-    "Blmngtn":"Bloomington Heights","Blueste":"Bluestem","BrDale":"Briardale",
-    "BrkSide":"Brookside","ClearCr":"Clear Creek","CollgCr":"College Creek",
-    "Crawfor":"Crawford","Edwards":"Edwards","Gilbert":"Gilbert",
-    "IDOTRR":"Iowa DOT and Rail Road","Greens":"Greenshire","GrnHill":"Green Hills",
-    "Landmrk":"Landmark","MeadowV":"Meadow Village","Mitchel":"Mitchell",
-    "Names":"North Ames","NAmes":"North Ames","NoRidge":"Northridge",
-    "NPkVill":"Northpark Villa","NridgHt":"Northridge Heights","NWAmes":"Northwest Ames",
-    "OldTown":"Old Town","SWISU":"South & West of ISU","Sawyer":"Sawyer",
-    "SawyerW":"Sawyer West","Somerst":"Somerset","StoneBr":"Stone Brook",
-    "Timber":"Timberland","Veenker":"Veenker",
-}
-
 NUMERIC_FEATURES = [
     "Gr Liv Area","Total Bsmt SF","1st Flr SF","Garage Area","Lot Area",
     "Year Built","Year Remod/Add","Overall Qual","Overall Cond",
@@ -253,395 +157,388 @@ NUMERIC_FEATURES = [
 CATEGORICAL_FEATURES = [
     "Neighborhood","House Style","Bldg Type","Central Air","Kitchen Qual","Exter Qual",
 ]
-
 HOUSE_STYLE_DISPLAY = {
     "1Story":"1 Story","1.5Fin":"1.5 Story Finished","1.5Unf":"1.5 Story Unfinished",
     "2Story":"2 Story","2.5Fin":"2.5 Story Finished","2.5Unf":"2.5 Story Unfinished",
     "SFoyer":"Split Foyer","SLvl":"Split Level",
 }
 BLDG_TYPE_DISPLAY = {
-    "1Fam":"Single-family Detached","2fmCon":"Two-family Conversion",
-    "Duplex":"Duplex","TwnhsE":"Townhouse End Unit","Twnhs":"Townhouse Inside Unit",
+    "1Fam":"Single-family","2fmCon":"Two-family","Duplex":"Duplex",
+    "TwnhsE":"Townhouse End","Twnhs":"Townhouse Inside",
 }
-CENTRAL_AIR_DISPLAY = {"Y":"Yes ✅","N":"No ❌"}
-QUALITY_DISPLAY = {"Ex":"Excellent ⭐⭐⭐⭐⭐","Gd":"Good ⭐⭐⭐⭐","TA":"Average ⭐⭐⭐","Fa":"Fair ⭐⭐","Po":"Poor ⭐"}
+CENTRAL_AIR_DISPLAY = {"Y":"Yes","N":"No"}
+QUALITY_DISPLAY = {"Ex":"Excellent","Gd":"Good","TA":"Average","Fa":"Fair","Po":"Poor"}
 
-# ──────────────────────────────────────────────
-# LOADERS
-# ──────────────────────────────────────────────
+CORRELATIONS = [
+    ("Overall Qual",  0.80),("Gr Liv Area",  0.71),("Garage Cars",  0.65),
+    ("Total Bsmt SF", 0.63),("1st Flr SF",   0.62),("Year Built",   0.56),
+    ("Full Bath",     0.55),("TotRms AbvGrd",0.50),
+]
+
+# ── Loaders ───────────────────────────────────────────────────────
 @st.cache_resource
 def load_artifacts():
-    required = ["scaler.pkl","label_encoders.pkl","feature_names.pkl","categorical_options.pkl"]
-    for f in required:
+    for f in ["scaler.pkl","label_encoders.pkl","feature_names.pkl","categorical_options.pkl"]:
         if not os.path.exists(os.path.join(MODEL_DIR, f)):
-            raise FileNotFoundError(f"File '{f}' not found. Run 'python model_training.py' first!")
-    scaler        = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
-    label_encoders= joblib.load(os.path.join(MODEL_DIR, "label_encoders.pkl"))
-    feature_names = joblib.load(os.path.join(MODEL_DIR, "feature_names.pkl"))
-    cat_options   = joblib.load(os.path.join(MODEL_DIR, "categorical_options.pkl"))
-    return scaler, label_encoders, feature_names, cat_options
+            raise FileNotFoundError(f"'{f}' not found. Run model_training.py first.")
+    return (
+        joblib.load(os.path.join(MODEL_DIR, "scaler.pkl")),
+        joblib.load(os.path.join(MODEL_DIR, "label_encoders.pkl")),
+        joblib.load(os.path.join(MODEL_DIR, "feature_names.pkl")),
+        joblib.load(os.path.join(MODEL_DIR, "categorical_options.pkl")),
+    )
 
 @st.cache_resource
 def load_model(filename):
     path = os.path.join(MODEL_DIR, filename)
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Model '{path}' not found. Run 'python model_training.py' first!")
+        raise FileNotFoundError(f"'{path}' not found. Run model_training.py first.")
     return joblib.load(path)
 
-# ──────────────────────────────────────────────
-# HELPERS
-# ──────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────
 def selectbox_with_display(label, values, display_map, default=None):
     options = [display_map.get(v, v) for v in values]
     idx = values.index(default) if default and default in values else 0
-    selected_label = st.selectbox(label, options=options, index=idx)
-    selected_code  = values[options.index(selected_label)]
-    return selected_code, selected_label
+    sel = st.selectbox(label, options=options, index=idx)
+    return values[options.index(sel)], sel
 
 def preprocess_input(user_input, scaler, label_encoders, feature_names):
     df = pd.DataFrame([user_input])
     for col in CATEGORICAL_FEATURES:
-        le  = label_encoders[col]
+        le = label_encoders[col]
         val = str(df[col].iloc[0])
-        if val not in le.classes_:
-            val = le.classes_[0]
+        if val not in le.classes_: val = le.classes_[0]
         df[col] = le.transform([val])
     df = df[feature_names]
     df[NUMERIC_FEATURES] = scaler.transform(df[NUMERIC_FEATURES])
     return df
 
-def gauge_chart(value, min_val=50000, max_val=750000):
-    """Plotly gauge showing predicted price."""
+def gauge_chart(value):
     fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=value,
-        number={"prefix":"$","valueformat":",.0f","font":{"size":28,"color":"#2d3436","family":"Nunito"}},
+        mode="gauge+number", value=value,
+        number={"prefix":"$","valueformat":",.0f","font":{"size":20,"color":"#2c2c2a","family":"Inter"}},
         gauge={
-            "axis":{"range":[min_val, max_val],"tickformat":"$,.0f",
-                    "tickfont":{"size":10},"nticks":6},
-            "bar":{"color":"#6c5ce7","thickness":0.25},
-            "bgcolor":"white",
-            "borderwidth":2,
-            "bordercolor":"#dfe6e9",
+            "axis":{"range":[50000,750000],"tickformat":"$,.0f",
+                    "tickfont":{"size":9,"color":"#888780","family":"Inter"},"nticks":5},
+            "bar":{"color":"#1d6fca","thickness":0.28},
+            "bgcolor":"#f5f4f0","borderwidth":1,"bordercolor":"#e8e6e0",
             "steps":[
-                {"range":[min_val, 200000],"color":"#55efc4"},
-                {"range":[200000, 350000],"color":"#ffeaa7"},
-                {"range":[350000, 500000],"color":"#fdcb6e"},
-                {"range":[500000, max_val],"color":"#ff7675"},
+                {"range":[50000, 200000],"color":"#eaf3de"},
+                {"range":[200000,350000],"color":"#e6f1fb"},
+                {"range":[350000,500000],"color":"#faeeda"},
+                {"range":[500000,750000],"color":"#fcebeb"},
             ],
-            "threshold":{"line":{"color":"#6c5ce7","width":4},"thickness":0.75,"value":value},
+            "threshold":{"line":{"color":"#1d6fca","width":3},"thickness":0.75,"value":value},
         },
-        domain={"x":[0,1],"y":[0,1]},
     ))
-    fig.update_layout(
-        height=260,
-        margin=dict(l=30,r=30,t=20,b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        font={"family":"Nunito"},
-    )
+    fig.update_layout(height=210, margin=dict(l=20,r=20,t=10,b=0),
+                      paper_bgcolor="rgba(0,0,0,0)", font={"family":"Inter"})
     return fig
 
-def feature_importance_chart(model, feature_names, model_name):
-    """Bar chart of feature importances (RF / XGBoost only)."""
-    if not hasattr(model, "feature_importances_"):
-        return None
-    importance = model.feature_importances_
-    df_imp = pd.DataFrame({"Feature": feature_names, "Importance": importance})
-    df_imp = df_imp.sort_values("Importance", ascending=True).tail(10)
-
-    colors = px.colors.sequential.Sunset[::-1][:len(df_imp)]
-
-    fig = go.Figure(go.Bar(
-        x=df_imp["Importance"],
-        y=df_imp["Feature"],
-        orientation="h",
-        marker=dict(color=colors, line=dict(color="rgba(0,0,0,0.1)", width=1)),
-        text=[f"{v:.3f}" for v in df_imp["Importance"]],
-        textposition="outside",
-        textfont=dict(size=10, family="Nunito", color="#636e72"),
-    ))
-    fig.update_layout(
-        title=dict(text="🔍 Top 10 Feature Importances", font=dict(size=14, family="Nunito", color="#2d3436")),
-        xaxis=dict(showgrid=True, gridcolor="#f0f0f0", title=""),
-        yaxis=dict(showgrid=False, title=""),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=340,
-        margin=dict(l=10,r=60,t=40,b=10),
-        font={"family":"Nunito"},
-    )
-    return fig
-
-def price_range_chart(predicted, lower, upper):
-    """Visual bar showing confidence range."""
+def range_chart(predicted, lo, hi):
     fig = go.Figure()
-    # background track
     fig.add_trace(go.Bar(
-        x=[upper - lower], base=[lower],
-        y=["Price Range"], orientation="h",
-        marker_color="rgba(108,92,231,0.15)",
-        width=0.4, showlegend=False,
-        hovertemplate=f"Range: ${lower:,.0f} – ${upper:,.0f}<extra></extra>",
+        x=[hi - lo], base=[lo], y=[""], orientation="h",
+        marker_color="#b5d4f4", width=0.5, showlegend=False,
+        hovertemplate=f"${lo:,.0f} – ${hi:,.0f}<extra></extra>",
     ))
-    # point estimate
     fig.add_trace(go.Scatter(
-        x=[predicted], y=["Price Range"],
-        mode="markers+text",
-        marker=dict(size=18, color="#6c5ce7", symbol="diamond",
-                    line=dict(color="white", width=2)),
-        text=[f"  ${predicted:,.0f}"],
-        textfont=dict(size=13, color="#6c5ce7", family="Nunito"),
-        textposition="middle right",
-        showlegend=False,
+        x=[predicted], y=[""], mode="markers+text",
+        marker=dict(size=14, color="#1d6fca", symbol="diamond"),
+        text=[f"${predicted:,.0f}"],
+        textfont=dict(size=12, color="#1d6fca", family="Inter"),
+        textposition="top center", showlegend=False,
         hovertemplate=f"Predicted: ${predicted:,.0f}<extra></extra>",
     ))
     fig.update_layout(
-        xaxis=dict(tickformat="$,.0f", showgrid=True, gridcolor="#f5f5f5"),
+        xaxis=dict(tickformat="$,.0f", showgrid=True, gridcolor="#f0ede6",
+                   tickfont=dict(size=10,color="#888780")),
         yaxis=dict(showticklabels=False),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=110,
-        margin=dict(l=10,r=10,t=10,b=10),
-        font={"family":"Nunito"},
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=90, margin=dict(l=0,r=0,t=28,b=0),
     )
     return fig
 
-def specs_radar(user_input):
-    """Mini radar chart of quality/room specs (normalized 0-1)."""
-    cats = ["Overall\nQuality","Overall\nCondition","Full\nBath",
-            "Bedrooms","Fireplaces","Garage\nCars"]
-    raw  = [
-        user_input["Overall Qual"] / 10,
-        user_input["Overall Cond"] / 10,
-        user_input["Full Bath"] / 4,
-        user_input["Bedroom AbvGr"] / 8,
-        user_input["Fireplaces"] / 4,
-        user_input["Garage Cars"] / 4,
-    ]
-    fig = go.Figure(go.Scatterpolar(
-        r=raw + [raw[0]],
-        theta=cats + [cats[0]],
-        fill="toself",
-        fillcolor="rgba(162,155,254,0.3)",
-        line=dict(color="#6c5ce7", width=2),
-        marker=dict(size=7, color="#6c5ce7"),
+def importance_chart(model, feature_names):
+    if not hasattr(model, "feature_importances_"):
+        return None
+    df_imp = pd.DataFrame({"f":feature_names,"v":model.feature_importances_})
+    df_imp = df_imp.sort_values("v", ascending=True).tail(8)
+    fig = go.Figure(go.Bar(
+        x=df_imp["v"], y=df_imp["f"], orientation="h",
+        marker_color="#1d6fca", opacity=0.85,
+        text=[f"{v:.3f}" for v in df_imp["v"]],
+        textposition="outside",
+        textfont=dict(size=10,color="#888780",family="Inter"),
     ))
     fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0,1], showticklabels=False, gridcolor="#e0e0e0"),
-            angularaxis=dict(tickfont=dict(size=10, family="Nunito", color="#636e72")),
-            bgcolor="rgba(0,0,0,0)",
-        ),
-        paper_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-        height=280,
-        margin=dict(l=40,r=40,t=20,b=20),
+        xaxis=dict(showgrid=True,gridcolor="#f0ede6",showticklabels=False,title=""),
+        yaxis=dict(showgrid=False,title="",tickfont=dict(size=11,color="#2c2c2a",family="Inter")),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=270, margin=dict(l=10,r=55,t=0,b=0),
     )
     return fig
 
-# ──────────────────────────────────────────────
-# MAIN
-# ──────────────────────────────────────────────
-def main():
-    # Hero banner
-    st.markdown("""
-    <div class="hero-banner">
-        <h1>🏠 House Price Predictor</h1>
-        <p>Ames Housing Dataset · Machine Learning · 3 Models · Instant Estimate</p>
-    </div>
-    """, unsafe_allow_html=True)
+def corr_html_block():
+    html = ""
+    for feat, val in CORRELATIONS:
+        pct = int(val * 100)
+        html += f"""<div class="corr-row">
+            <span class="corr-label">{feat}</span>
+            <div class="corr-bar-bg"><div class="corr-bar-fill" style="width:{pct}%"></div></div>
+            <span class="corr-val">{val:.2f}</span>
+        </div>"""
+    return html
 
-    # Load artifacts
+def neighborhood_chart():
+    neighborhoods = ["NoRidge","NridgHt","StoneBr","Veenker","Timber","Somerst","Crawfor","CollgCr","Gilbert","NAmes"]
+    prices        = [302000,318000,319000,250000,232000,226000,201000,200000,186000,153000]
+    pairs = sorted(zip(prices, neighborhoods))
+    prices_s, neigh_s = zip(*pairs)
+    fig = go.Figure(go.Bar(
+        x=list(prices_s), y=list(neigh_s), orientation="h",
+        marker_color=["#1d6fca" if p == max(prices_s) else "#b5d4f4" for p in prices_s],
+        text=[f"${p//1000}k" for p in prices_s],
+        textposition="outside",
+        textfont=dict(size=11,color="#888780",family="Inter"),
+    ))
+    fig.update_layout(
+        xaxis=dict(showgrid=False,showticklabels=False,title=""),
+        yaxis=dict(showgrid=False,title="",tickfont=dict(size=11,color="#2c2c2a",family="Inter")),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=310, margin=dict(l=0,r=60,t=0,b=0), showlegend=False,
+    )
+    return fig
+
+# ── Main ──────────────────────────────────────────────────────────
+def main():
     try:
         scaler, label_encoders, feature_names, cat_options = load_artifacts()
     except FileNotFoundError as e:
         st.error(f"⚠️ {e}")
-        st.info("Mở terminal và chạy: `python model_training.py`")
+        st.info("Run: `python model_training.py`")
         st.stop()
 
-    # ── SIDEBAR ──────────────────────────────────
+    # ── Sidebar ───────────────────────────────────────────────────
     with st.sidebar:
-        st.markdown("## 🏠 House Price Predictor")
+        st.markdown("### 🏠 House Price Predictor")
+        st.caption("Ames Housing · Machine Learning")
         st.markdown("---")
 
-        # Model selection with description
-        st.markdown("### 🤖 Chọn Model")
-        selected_model_name = st.selectbox(
-            "Model dự báo:",
-            options=list(MODEL_FILES.keys()),
-        )
-        st.caption(f"ℹ️ {MODEL_DESCRIPTIONS[selected_model_name]}")
+        st.markdown("**Model**")
+        selected_model_name = st.selectbox("", list(MODEL_FILES.keys()), label_visibility="collapsed")
         st.markdown("---")
 
-        # ── Area & Structure
-        st.markdown('<p class="sidebar-section-title">📐 Diện tích & Cấu trúc</p>', unsafe_allow_html=True)
-        gr_liv_area   = st.number_input("Living Area (sq ft)",   300,  6000, 1500, 50)
-        total_bsmt_sf = st.number_input("Basement Area (sq ft)",   0,  3000,  800, 50)
-        first_flr_sf  = st.number_input("First Floor Area (sq ft)",300, 4000, 1000, 50)
-        lot_area      = st.number_input("Lot Area (sq ft)",      1000,100000,10000,500)
-        garage_area   = st.number_input("Garage Area (sq ft)",     0,  1500,  400, 50)
+        st.markdown("**Area (sq ft)**")
+        c1, c2 = st.columns(2)
+        with c1:
+            gr_liv_area   = st.number_input("Living",   300,  6000, 1500, 50)
+            total_bsmt_sf = st.number_input("Basement",   0,  3000,  800, 50)
+        with c2:
+            first_flr_sf  = st.number_input("1st Floor",300,  4000, 1000, 50)
+            garage_area   = st.number_input("Garage",     0,  1500,  400, 50)
+        lot_area = st.number_input("Lot Area (sq ft)", 1000, 100000, 10000, 500)
 
-        st.markdown('<p class="sidebar-section-title">🛏️ Phòng & Tiện nghi</p>', unsafe_allow_html=True)
-        bedroom    = st.slider("Bedrooms 🛏️",        0, 8, 3)
-        full_bath  = st.slider("Full Bathrooms 🛁",   0, 4, 2)
-        tot_rms    = st.slider("Total Rooms 🚪",       2,14, 7)
-        fireplaces = st.slider("Fireplaces 🔥",        0, 4, 1)
-        garage_cars= st.slider("Garage Capacity 🚗",   0, 4, 2)
+        st.markdown("**Rooms**")
+        c3, c4 = st.columns(2)
+        with c3:
+            bedroom    = st.number_input("Bedrooms",    0, 8, 3, 1)
+            full_bath  = st.number_input("Bathrooms",   0, 4, 2, 1)
+            tot_rms    = st.number_input("Total rooms", 2,14, 7, 1)
+        with c4:
+            fireplaces  = st.number_input("Fireplaces", 0, 4, 1, 1)
+            garage_cars = st.number_input("Garage cars",0, 4, 2, 1)
 
-        st.markdown('<p class="sidebar-section-title">📅 Thời gian</p>', unsafe_allow_html=True)
-        year_built = st.number_input("Year Built 🏗️",     1872, 2010, 1980, 1)
-        year_remod = st.number_input("Year Remodeled 🔨", 1950, 2010, 2000, 1)
+        st.markdown("**Year**")
+        c5, c6 = st.columns(2)
+        with c5: year_built = st.number_input("Built",    1872, 2010, 1980, 1)
+        with c6: year_remod = st.number_input("Remodeled",1950, 2010, 2000, 1)
 
-        st.markdown('<p class="sidebar-section-title">⭐ Chất lượng</p>', unsafe_allow_html=True)
-        overall_qual = st.slider("Overall Quality (1–10) 🏅", 1, 10, 6)
-        overall_cond = st.slider("Overall Condition (1–10) 🔧",1, 10, 5)
+        st.markdown("**Quality**")
+        overall_qual = st.slider("Overall Quality (1–10)", 1, 10, 6)
+        overall_cond = st.slider("Overall Condition (1–10)", 1, 10, 5)
 
-        st.markdown('<p class="sidebar-section-title">📍 Vị trí & Loại nhà</p>', unsafe_allow_html=True)
-        neighborhood = st.selectbox("Neighborhood 🗺️", options=cat_options.get("Neighborhood",["NAmes"]))
+        st.markdown("**Location & Type**")
+        neighborhood = st.selectbox("Neighborhood", cat_options.get("Neighborhood", ["NAmes"]))
         house_style, house_style_label = selectbox_with_display(
-            "House Style 🏡", cat_options.get("House Style",["1Story"]), HOUSE_STYLE_DISPLAY, "1Story")
+            "House Style", cat_options.get("House Style", ["1Story"]), HOUSE_STYLE_DISPLAY, "1Story")
         bldg_type, bldg_type_label = selectbox_with_display(
-            "Building Type 🏢", cat_options.get("Bldg Type",["1Fam"]), BLDG_TYPE_DISPLAY, "1Fam")
+            "Building Type", cat_options.get("Bldg Type", ["1Fam"]), BLDG_TYPE_DISPLAY, "1Fam")
         central_air, central_air_label = selectbox_with_display(
-            "Central Air ❄️", cat_options.get("Central Air",["Y","N"]), CENTRAL_AIR_DISPLAY, "Y")
+            "Central Air", cat_options.get("Central Air", ["Y","N"]), CENTRAL_AIR_DISPLAY, "Y")
         kitchen_qual, kitchen_qual_label = selectbox_with_display(
-            "Kitchen Quality 🍳", cat_options.get("Kitchen Qual",["TA"]), QUALITY_DISPLAY, "TA")
+            "Kitchen Quality", cat_options.get("Kitchen Qual", ["TA"]), QUALITY_DISPLAY, "TA")
         exter_qual, exter_qual_label = selectbox_with_display(
-            "Exterior Quality 🎨", cat_options.get("Exter Qual",["TA"]), QUALITY_DISPLAY, "TA")
+            "Exterior Quality", cat_options.get("Exter Qual", ["TA"]), QUALITY_DISPLAY, "TA")
 
         st.markdown("---")
-        predict_button = st.button("🔮 Predict House Price", type="primary", use_container_width=True)
+        predict_button = st.button("Predict House Price →", type="primary", use_container_width=True)
 
-    # ── MAIN AREA ─────────────────────────────────
     user_input = {
-        "Gr Liv Area": gr_liv_area, "Total Bsmt SF": total_bsmt_sf,
-        "1st Flr SF": first_flr_sf, "Garage Area": garage_area,
-        "Lot Area": lot_area, "Year Built": year_built,
-        "Year Remod/Add": year_remod, "Overall Qual": overall_qual,
-        "Overall Cond": overall_cond, "TotRms AbvGrd": tot_rms,
-        "Full Bath": full_bath, "Bedroom AbvGr": bedroom,
-        "Fireplaces": fireplaces, "Garage Cars": garage_cars,
-        "Neighborhood": neighborhood, "House Style": house_style,
-        "Bldg Type": bldg_type, "Central Air": central_air,
-        "Kitchen Qual": kitchen_qual, "Exter Qual": exter_qual,
+        "Gr Liv Area":gr_liv_area,"Total Bsmt SF":total_bsmt_sf,"1st Flr SF":first_flr_sf,
+        "Garage Area":garage_area,"Lot Area":lot_area,"Year Built":year_built,
+        "Year Remod/Add":year_remod,"Overall Qual":overall_qual,"Overall Cond":overall_cond,
+        "TotRms AbvGrd":tot_rms,"Full Bath":full_bath,"Bedroom AbvGr":bedroom,
+        "Fireplaces":fireplaces,"Garage Cars":garage_cars,"Neighborhood":neighborhood,
+        "House Style":house_style,"Bldg Type":bldg_type,"Central Air":central_air,
+        "Kitchen Qual":kitchen_qual,"Exter Qual":exter_qual,
     }
 
+    # ── Header ────────────────────────────────────────────────────
+    st.markdown("""
+    <div class="app-header">
+        <h1>Ames Housing Analytics</h1>
+        <p>2,930 sales · 2006–2010 · Iowa, USA</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Placeholder (no prediction yet) ──────────────────────────
     if not predict_button:
-        # ── Placeholder state ──
-        col_a, col_b = st.columns([3, 2])
-        with col_a:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("### 👈 Nhập thông số và nhấn Predict!")
-            st.info("Điền đầy đủ thông số ngôi nhà trong sidebar bên trái, sau đó nhấn **🔮 Predict House Price** để xem kết quả dự báo.")
-            st.markdown("""
-            **Hướng dẫn nhanh:**
-            - 📐 Nhập diện tích các khu vực
-            - 🛏️ Chọn số phòng, tiện nghi
-            - ⭐ Đánh giá chất lượng nhà
-            - 📍 Chọn khu vực và loại nhà
-            - 🤖 Chọn model dự báo phù hợp
-            """)
-            st.markdown('</div>', unsafe_allow_html=True)
-        with col_b:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown("### 🤖 Thông tin Model")
-            for name, desc in MODEL_DESCRIPTIONS.items():
-                st.markdown(f"**{name}** — {desc}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        return
-
-    # ── Validation ──
-    if year_remod < year_built:
-        st.warning("⚠️ Năm cải tạo không thể sớm hơn năm xây dựng! Vui lòng kiểm tra lại.")
-        st.stop()
-
-    # ── Load & predict ──
-    try:
-        model = load_model(MODEL_FILES[selected_model_name])
-    except FileNotFoundError as e:
-        st.error(f"⚠️ {e}")
-        st.stop()
-
-    try:
-        X_pred = preprocess_input(user_input, scaler, label_encoders, feature_names)
-        predicted_price = float(max(0, model.predict(X_pred)[0]))
-    except Exception as e:
-        st.error(f"❌ Lỗi khi dự báo: {e}")
-        st.stop()
-
-    lower = predicted_price * 0.90
-    upper = predicted_price * 1.10
-
-    # ── Layout: 3 columns ──
-    col1, col2, col3 = st.columns([2, 2, 1.5])
-
-    # ── Col 1: Price result ──
-    with col1:
-        st.markdown(f"""
-        <div class="price-card">
-            <div class="label">💰 Giá Dự Báo</div>
-            <div class="price">${predicted_price:,.0f}</div>
-            <div style="font-size:0.85rem;opacity:0.7;margin-top:4px">{selected_model_name}</div>
-            <div class="range">
-                Khoảng ±10%:
-                <span class="range-badge">${lower:,.0f}</span> — <span class="range-badge">${upper:,.0f}</span>
+        st.markdown("""
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="label">Median sale price</div>
+                <div class="value">$160,000</div>
+                <div class="sub">Mean $180,796 &nbsp;<span class="badge-down">−4.7% vs 2006</span></div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Total transactions</div>
+                <div class="value">2,930</div>
+                <div class="sub">Normal sales 82%</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Price range</div>
+                <div class="value" style="font-size:22px">$12.8k – $755k</div>
+                <div class="sub">IQR $84,000</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Top neighborhood</div>
+                <div class="value blue">StoneBr</div>
+                <div class="sub">Median $319,000 &nbsp;<span class="badge-up">+99% vs avg</span></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Quick-stat pills
-        age = 2025 - year_built
-        price_per_sqft = predicted_price / gr_liv_area if gr_liv_area else 0
-        st.markdown(f"""
-        <div class="stat-row">
-            <div class="stat-pill blue">📐 {gr_liv_area:,} sq ft</div>
-            <div class="stat-pill green">💲 ${price_per_sqft:,.0f}/sq ft</div>
-            <div class="stat-pill pink">🏗️ {age} tuổi</div>
-            <div class="stat-pill purple">⭐ Quality {overall_qual}/10</div>
+        col_l, col_r = st.columns([3, 2])
+        with col_l:
+            st.markdown('<div class="chart-card"><div class="chart-title">Median price by neighborhood · Top 10</div>', unsafe_allow_html=True)
+            st.plotly_chart(neighborhood_chart(), use_container_width=True, config={"displayModeBar":False})
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with col_r:
+            st.markdown('<div class="chart-card"><div class="chart-title">Correlations with sale price</div>', unsafe_allow_html=True)
+            st.markdown(corr_html_block(), unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown("""
+            <div class="chart-card">
+                <div class="chart-title">Building type mix</div>
+                <table class="specs-table">
+                    <tr><td>Single-family</td><td>2,425</td></tr>
+                    <tr><td>Townhouse End</td><td>233</td></tr>
+                    <tr><td>Duplex</td><td>109</td></tr>
+                    <tr><td>Townhouse Inside</td><td>101</td></tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.info("← Fill in house specifications in the sidebar and click **Predict House Price →**")
+        return
+
+    # ── Validation ────────────────────────────────────────────────
+    if year_remod < year_built:
+        st.warning("Remodel year cannot be earlier than build year.")
+        st.stop()
+
+    # ── Predict ───────────────────────────────────────────────────
+    try:
+        model = load_model(MODEL_FILES[selected_model_name])
+        X_pred = preprocess_input(user_input, scaler, label_encoders, feature_names)
+        predicted_price = float(max(0, model.predict(X_pred)[0]))
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+        st.stop()
+
+    lower = predicted_price * 0.90
+    upper = predicted_price * 1.10
+    age = 2025 - year_built
+    price_per_sqft = predicted_price / gr_liv_area if gr_liv_area else 0
+    vs_pct = ((predicted_price - 160000) / 160000) * 100
+    vs_label = f"+{vs_pct:.1f}% vs median" if vs_pct >= 0 else f"{vs_pct:.1f}% vs median"
+    badge_cls = "badge-up" if vs_pct >= 0 else "badge-down"
+
+    # ── 4 metric cards ────────────────────────────────────────────
+    st.markdown(f"""
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="label">Predicted price</div>
+            <div class="value blue">${predicted_price:,.0f}</div>
+            <div class="sub"><span class="{badge_cls}">{vs_label}</span></div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="metric-card">
+            <div class="label">Price range (±10%)</div>
+            <div class="value" style="font-size:20px">${lower:,.0f} – ${upper:,.0f}</div>
+            <div class="sub">Confidence interval</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Price per sq ft</div>
+            <div class="value">${price_per_sqft:,.0f}</div>
+            <div class="sub">{gr_liv_area:,} sqft living area</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">House age</div>
+            <div class="value">{age} yrs</div>
+            <div class="sub">Built {year_built} · Remodeled {year_remod}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-        # Price range bar
-        st.markdown('<div class="section-header">📊 Khoảng giá ±10%</div>', unsafe_allow_html=True)
-        st.plotly_chart(price_range_chart(predicted_price, lower, upper),
-                        use_container_width=True, config={"displayModeBar": False})
+    # ── 3-column charts ───────────────────────────────────────────
+    col1, col2, col3 = st.columns([2, 2, 1.6])
 
-    # ── Col 2: Gauge + Feature importance ──
+    with col1:
+        st.markdown('<div class="chart-card"><div class="chart-title">Price estimate · gauge</div>', unsafe_allow_html=True)
+        st.plotly_chart(gauge_chart(predicted_price), use_container_width=True, config={"displayModeBar":False})
+        st.markdown('<div class="chart-title" style="margin-top:12px">Price range · USD</div>', unsafe_allow_html=True)
+        st.plotly_chart(range_chart(predicted_price, lower, upper), use_container_width=True, config={"displayModeBar":False})
+        st.markdown('</div>', unsafe_allow_html=True)
+
     with col2:
-        st.markdown('<div class="section-header">🎯 Gauge – Mức giá</div>', unsafe_allow_html=True)
-        st.plotly_chart(gauge_chart(predicted_price), use_container_width=True,
-                        config={"displayModeBar": False})
+        st.markdown('<div class="chart-card"><div class="chart-title">Correlations with sale price</div>', unsafe_allow_html=True)
+        st.markdown(corr_html_block(), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        fig_imp = feature_importance_chart(model, feature_names, selected_model_name)
+        fig_imp = importance_chart(model, feature_names)
         if fig_imp:
-            st.plotly_chart(fig_imp, use_container_width=True, config={"displayModeBar": False})
+            st.markdown(f'<div class="chart-card"><div class="chart-title">Feature importance · {selected_model_name}</div>', unsafe_allow_html=True)
+            st.plotly_chart(fig_imp, use_container_width=True, config={"displayModeBar":False})
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.info("ℹ️ Linear Regression không có feature importance dạng bar chart.")
+            st.markdown('<div class="chart-card"><div class="chart-title">Feature importance</div><p style="color:#888780;font-size:13px">Not available for Linear Regression.</p></div>', unsafe_allow_html=True)
 
-    # ── Col 3: Radar + Summary ──
     with col3:
-        st.markdown('<div class="section-header">🕸️ Specs Radar</div>', unsafe_allow_html=True)
-        st.plotly_chart(specs_radar(user_input), use_container_width=True,
-                        config={"displayModeBar": False})
-
-        st.markdown('<div class="section-header">📋 Thông số</div>', unsafe_allow_html=True)
-        summary = pd.DataFrame({
-            "Thông số": [
-                "Living Area","Basement","1st Floor","Lot Area",
-                "Bedrooms","Bathrooms","Quality","Year Built",
-                "Neighborhood","Bldg Type","Central Air",
-                "Kitchen","Exterior",
-            ],
-            "Giá trị": [
-                f"{gr_liv_area:,} sqft", f"{total_bsmt_sf:,} sqft",
-                f"{first_flr_sf:,} sqft", f"{lot_area:,} sqft",
-                str(bedroom), str(full_bath),
-                f"{overall_qual}/10", str(year_built),
-                neighborhood, bldg_type_label, central_air_label,
-                kitchen_qual_label.split()[0], exter_qual_label.split()[0],
-            ]
-        })
-        st.dataframe(summary, use_container_width=True, hide_index=True, height=440)
+        specs = [
+            ("Living area",   f"{gr_liv_area:,} sqft"),
+            ("Basement",      f"{total_bsmt_sf:,} sqft"),
+            ("1st floor",     f"{first_flr_sf:,} sqft"),
+            ("Lot area",      f"{lot_area:,} sqft"),
+            ("Garage area",   f"{garage_area:,} sqft"),
+            ("Bedrooms",      str(bedroom)),
+            ("Bathrooms",     str(full_bath)),
+            ("Total rooms",   str(tot_rms)),
+            ("Fireplaces",    str(fireplaces)),
+            ("Garage cars",   str(garage_cars)),
+            ("Quality",       f"{overall_qual}/10"),
+            ("Condition",     f"{overall_cond}/10"),
+            ("Neighborhood",  neighborhood),
+            ("Style",         house_style_label),
+            ("Type",          bldg_type_label),
+            ("Central air",   central_air_label),
+            ("Kitchen qual",  kitchen_qual_label),
+            ("Exterior qual", exter_qual_label),
+        ]
+        rows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in specs)
+        st.markdown(f'<div class="chart-card"><div class="chart-title">House specifications</div><table class="specs-table">{rows}</table></div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
